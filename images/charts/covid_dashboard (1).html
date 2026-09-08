@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COVID-19 Global Situation Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0F1A1D;
+    --bg-alt:#0C1517;
+    --panel:#162326;
+    --panel-2:#1B2B2F;
+    --line:#2A3D41;
+    --line-soft:#223235;
+    --text:#E7ECE9;
+    --text-dim:#9DB0AC;
+    --text-faint:#6C8380;
+    --amber:#E3A94B;
+    --red:#C1584F;
+    --green:#4FA98A;
+    --cyan:#7FBFCB;
+    --amber-dim:rgba(227,169,75,.14);
+    --red-dim:rgba(193,88,79,.14);
+    --green-dim:rgba(79,169,138,.14);
+    --cyan-dim:rgba(127,191,203,.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .serif{font-family:'Newsreader',serif;}
+
+  /* ---------- corner-tick panel decoration ---------- */
+  .tick-panel{position:relative;border:1px solid var(--line);background:var(--panel);}
+  .tick-panel::before,.tick-panel::after,
+  .tick-panel .tk1,.tick-panel .tk2{content:"";position:absolute;width:9px;height:9px;pointer-events:none;}
+  .tick-panel::before{top:-1px;left:-1px;border-top:1.5px solid var(--cyan);border-left:1.5px solid var(--cyan);}
+  .tick-panel::after{bottom:-1px;right:-1px;border-bottom:1.5px solid var(--cyan);border-right:1.5px solid var(--cyan);}
+
+  /* ---------- masthead ---------- */
+  .masthead{border-bottom:1px solid var(--line);background:var(--bg-alt);padding:22px 32px 0;}
+  .masthead-top{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px 24px;max-width:1320px;margin:0 auto;padding-bottom:18px;}
+  .kicker{font-size:11px;letter-spacing:.08em;color:var(--text-faint);margin-bottom:6px;}
+  h1.title{font-family:'Newsreader',serif;font-weight:500;font-size:32px;line-height:1.1;margin:0;color:var(--text);}
+  .subline{color:var(--text-dim);font-size:13.5px;margin-top:6px;max-width:560px;line-height:1.5;}
+  .meta-block{text-align:right;font-size:12px;color:var(--text-faint);line-height:1.7;}
+  .meta-block b{color:var(--cyan);font-family:'IBM Plex Mono',monospace;font-weight:500;}
+
+  /* ---------- tab nav ---------- */
+  .tabnav{max-width:1320px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;}
+  .tab-btn{background:none;border:none;color:var(--text-faint);font-family:'Inter',sans-serif;font-size:13.5px;font-weight:500;padding:12px 18px 13px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--text);border-bottom-color:var(--amber);}
+  .tab-num{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-faint);margin-right:7px;}
+  .tab-btn.active .tab-num{color:var(--amber);}
+
+  /* ---------- page container ---------- */
+  .page{max-width:1320px;margin:0 auto;padding:28px 32px 60px;display:none;}
+  .page.active{display:block;}
+  .page-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+  .page-head h2{font-family:'Newsreader',serif;font-weight:500;font-size:21px;margin:0;color:var(--text);}
+  .page-head .page-desc{font-size:12.5px;color:var(--text-faint);}
+
+  /* ---------- KPI row ---------- */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--kc,var(--cyan));padding:16px 18px;}
+  .kpi .kpi-label{font-size:11px;letter-spacing:.05em;color:var(--text-faint);text-transform:uppercase;margin-bottom:10px;}
+  .kpi .kpi-val{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:500;color:var(--text);}
+  .kpi .kpi-sub{font-size:11.5px;color:var(--text-dim);margin-top:6px;}
+
+  /* ---------- grid layouts ---------- */
+  .grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;}
+  .grid-2b{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+  .stack{display:flex;flex-direction:column;gap:16px;}
+
+  .panel{padding:18px 18px 14px;}
+  .panel-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}
+  .panel-sub{font-size:11.5px;color:var(--text-faint);margin-bottom:14px;}
+  .chart-wrap{position:relative;width:100%;}
+
+  .callout{background:var(--amber-dim);border:1px solid rgba(227,169,75,.35);padding:13px 16px;font-size:12.5px;color:var(--text);line-height:1.55;margin-top:12px;}
+  .callout b{color:var(--amber);}
+  .callout.red{background:var(--red-dim);border-color:rgba(193,88,79,.35);}
+  .callout.red b{color:var(--red);}
+  .callout.green{background:var(--green-dim);border-color:rgba(79,169,138,.35);}
+  .callout.green b{color:var(--green);}
+
+  /* ---------- ranked list ---------- */
+  .rank-list{display:flex;flex-direction:column;gap:0;}
+  .rank-row{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;}
+  .rank-row:last-child{border-bottom:none;}
+  .rank-idx{color:var(--text-faint);font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  .rank-name{color:var(--text);}
+  .rank-bar-bg{grid-column:1/-1;height:4px;background:var(--line-soft);margin-top:2px;position:relative;}
+  .rank-bar-fill{height:100%;background:var(--red);}
+  .rank-val{font-family:'IBM Plex Mono',monospace;color:var(--text-dim);font-size:11.5px;}
+
+  /* ---------- peak cards ---------- */
+  .peak-card{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;}
+  .peak-card:last-child{border-bottom:none;}
+  .peak-country{color:var(--text);font-weight:500;}
+  .peak-figs{text-align:right;}
+  .peak-val{font-family:'IBM Plex Mono',monospace;color:var(--amber);font-size:13px;}
+  .peak-date{color:var(--text-faint);font-size:11px;margin-top:2px;}
+
+  /* ---------- filter bar ---------- */
+  .filter-bar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+  select{background:var(--panel-2);border:1px solid var(--line);color:var(--text);font-family:'Inter',sans-serif;font-size:12.5px;padding:7px 10px;cursor:pointer;}
+  .filter-label{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;}
+
+  /* ---------- table ---------- */
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead th{text-align:left;color:var(--text-faint);font-weight:500;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);}
+  tbody td{padding:7px 10px;border-bottom:1px solid var(--line-soft);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;}
+  tbody td:first-child{color:var(--text);font-family:'Inter',sans-serif;}
+  tbody tr:hover{background:var(--panel-2);}
+  .table-scroll{max-height:420px;overflow-y:auto;}
+
+  .legend-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-dim);}
+  .legend-dot{width:8px;height:8px;border-radius:1px;}
+
+  footer{max-width:1320px;margin:0 auto;padding:20px 32px 40px;color:var(--text-faint);font-size:11px;border-top:1px solid var(--line-soft);}
+  footer a{color:var(--cyan);text-decoration:none;}
+
+  @media(max-width:900px){
+    .kpi-row{grid-template-columns:1fr 1fr;}
+    .grid-2,.grid-2b,.grid-3{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-top">
+    <div>
+      <div class="kicker">GLOBAL PANDEMIC DATA &mdash; JAN 2020 &rarr; MAY 2021</div>
+      <h1 class="title">COVID-19 Situation Report</h1>
+      <div class="subline">Confirmed cases, deaths, and recoveries across 190+ countries, reshaped from Johns Hopkins CSSE time-series data.</div>
+    </div>
+    <div class="meta-block">
+      LATEST RECORD<br>
+      <b id="metaDate">&mdash;</b><br>
+      SOURCE: JHU CSSE
+    </div>
+  </div>
+  <div class="tabnav" id="tabnav">
+    <button class="tab-btn active" data-page="p1"><span class="tab-num">01</span>Global Overview</button>
+    <button class="tab-btn" data-page="p2"><span class="tab-num">02</span>Country &amp; Province</button>
+    <button class="tab-btn" data-page="p3"><span class="tab-num">03</span>Severity &amp; Death Rate</button>
+    <button class="tab-btn" data-page="p4"><span class="tab-num">04</span>Recovery Trends</button>
+  </div>
+</div>
+
+<!-- ================= PAGE 1 : GLOBAL OVERVIEW ================= -->
+<div class="page active" id="p1">
+  <div class="page-head">
+    <h2>Global Overview</h2>
+    <div class="page-desc">Cumulative totals as of the latest record date</div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi" style="--kc:var(--amber)">
+      <div class="kpi-label">Total Confirmed</div>
+      <div class="kpi-val" id="kpiConfirmed">&mdash;</div>
+      <div class="kpi-sub">across all tracked regions</div>
+    </div>
+    <div class="kpi" style="--kc:var(--red)">
+      <div class="kpi-label">Total Deaths</div>
+      <div class="kpi-val" id="kpiDeaths">&mdash;</div>
+      <div class="kpi-sub" id="kpiDeathsSub">&mdash;</div>
+    </div>
+    <div class="kpi" style="--kc:var(--green)">
+      <div class="kpi-label">Total Recovered</div>
+      <div class="kpi-val" id="kpiRecovered">&mdash;</div>
+      <div class="kpi-sub" id="kpiRecSub">&mdash;</div>
+    </div>
+    <div class="kpi" style="--kc:var(--cyan)">
+      <div class="kpi-label">Global Case Fatality Rate</div>
+      <div class="kpi-val" id="kpiCFR">&mdash;</div>
+      <div class="kpi-sub">deaths / confirmed</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="tick-panel panel">
+      <div class="panel-title">Top 5 Countries &mdash; Confirmed Cases Over Time</div>
+      <div class="panel-sub">Cumulative confirmed, weekly sample, Jan 2020 &ndash; May 2021</div>
+      <div class="legend-row" id="top5Legend"></div>
+      <div class="chart-wrap" style="height:340px;"><canvas id="chartTop5"></canvas></div>
+    </div>
+    <div class="stack">
+      <div class="tick-panel panel">
+        <div class="panel-title">Total Deaths by Country</div>
+        <div class="panel-sub">Top 20, latest cumulative</div>
+        <div class="rank-list" id="deathsRankList"></div>
+      </div>
+      <div class="callout red" id="usCallout"><b>US leads globally</b> &mdash; placeholder</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PAGE 2 : COUNTRY & PROVINCE ================= -->
+<div class="page" id="p2">
+  <div class="page-head">
+    <h2>Country &amp; Province Deep Dive</h2>
+    <div class="page-desc">Sub-national breakdowns and cross-country wave timing</div>
+  </div>
+
+  <div class="grid-2b">
+    <div class="tick-panel panel">
+      <div class="panel-title">China &mdash; Top 10 Provinces by Confirmed Cases</div>
+      <div class="panel-sub">Cumulative confirmed, weekly sample</div>
+      <div class="chart-wrap" style="height:300px;"><canvas id="chartChina"></canvas></div>
+    </div>
+    <div class="tick-panel panel">
+      <div class="panel-title">Canada &mdash; Provincial Death Rate</div>
+      <div class="panel-sub">Deaths / confirmed, latest cumulative, sorted descending</div>
+      <div class="chart-wrap" style="height:300px;"><canvas id="chartCanadaDR"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:16px;">
+    <div class="tick-panel panel">
+      <div class="panel-title">Daily New Cases &mdash; Germany, France, Italy</div>
+      <div class="panel-sub">Weekly-sampled daily new confirmed, showing distinct wave timing</div>
+      <div class="legend-row" id="euLegend"></div>
+      <div class="chart-wrap" style="height:300px;"><canvas id="chartEU"></canvas></div>
+    </div>
+    <div class="tick-panel panel">
+      <div class="panel-title">Peak Daily New Cases</div>
+      <div class="panel-sub">Highest single-day surge per country</div>
+      <div id="peakList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PAGE 3 : SEVERITY ================= -->
+<div class="page" id="p3">
+  <div class="page-head">
+    <h2>Severity &amp; Death Rate Analysis</h2>
+    <div class="page-desc">Case fatality comparisons across countries, 2020&ndash;2021</div>
+  </div>
+
+  <div class="grid-2b">
+    <div class="tick-panel panel">
+      <div class="panel-title">Highest 2020 Death Rate &mdash; Major Economies</div>
+      <div class="panel-sub">Deaths / confirmed, cumulative to Dec 31 2020</div>
+      <div class="chart-wrap" style="height:260px;"><canvas id="chartTop3DR"></canvas></div>
+    </div>
+    <div class="tick-panel panel">
+      <div class="panel-title">Cumulative US Deaths Over Time</div>
+      <div class="panel-sub">Jan 2020 &ndash; May 2021, weekly sample</div>
+      <div class="chart-wrap" style="height:260px;"><canvas id="chartUSDeaths"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2b" style="margin-top:16px;">
+    <div class="tick-panel panel">
+      <div class="panel-title">Average Daily Deaths</div>
+      <div class="panel-sub">Top 5 countries by mean daily death count</div>
+      <div class="chart-wrap" style="height:230px;"><canvas id="chartAvgDeaths"></canvas></div>
+    </div>
+    <div class="tick-panel panel">
+      <div class="panel-title">Recovery Rate &mdash; Canada vs Australia</div>
+      <div class="panel-sub">Recovered / confirmed, cumulative to Dec 31 2020</div>
+      <div class="chart-wrap" style="height:230px;"><canvas id="chartCanAusRec"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PAGE 4 : RECOVERY ================= -->
+<div class="page" id="p4">
+  <div class="page-head">
+    <h2>Recovery Trends</h2>
+    <div class="page-desc">Recovery outcomes and monthly trajectory by country</div>
+  </div>
+
+  <div class="grid-2b">
+    <div class="tick-panel panel">
+      <div class="panel-title">South Africa &mdash; Recoveries vs Deaths</div>
+      <div class="panel-sub">Cumulative totals, latest record date</div>
+      <div class="chart-wrap" style="height:260px;"><canvas id="chartSouthAfrica"></canvas></div>
+      <div class="callout green" id="saCallout"></div>
+    </div>
+    <div class="tick-panel panel">
+      <div class="panel-title">Monthly Recovery Ratio &mdash; US vs India</div>
+      <div class="panel-sub">Recovered / confirmed new cases per month, Mar 2020 &ndash; May 2021</div>
+      <div class="legend-row" id="recRatioLegend"></div>
+      <div class="chart-wrap" style="height:260px;"><canvas id="chartRecRatio"></canvas></div>
+    </div>
+  </div>
+
+  <div class="tick-panel panel" style="margin-top:16px;">
+    <div class="panel-title">Monthly Aggregated Trends by Country</div>
+    <div class="panel-sub">Confirmed / deaths / recovered per month, top 12 countries by total confirmed</div>
+    <div class="filter-bar">
+      <span class="filter-label">Country</span>
+      <select id="monthlyCountryFilter"></select>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Month</th><th>Confirmed</th><th>Deaths</th><th>Recovered</th></tr></thead>
+        <tbody id="monthlyTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Data: Johns Hopkins University CSSE COVID-19 time-series (confirmed / deaths / recovered), reshaped with pandas <span class="mono">melt → merge → groupby</span>. Figures reflect cumulative counts as revised in the source repository and may differ slightly from earlier notebook snapshots.
+</footer>
+
+<script id="dashboard-data" type="application/json">
+{"kpis": {"confirmed": 170463127, "deaths": 3676155, "recovered": 107140668, "cfr": 2.16, "latest_date": "2021-05-29"}, "top5_series": {"US": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "confirmed": [5, 8, 12, 14, 16, 32, 519, 3212, 34944, 143544, 353117, 571551, 768888, 975537, 1166189, 1337061, 1492449, 1647513, 1791547, 1940242, 2090171, 2279932, 2557223, 2904843, 3315407, 3767602, 4226305, 4652810, 5048871, 5421026, 5720122, 6012963, 6294762, 6550788, 6842405, 7128423, 7428859, 7776972, 8171010, 8664567, 9254490, 10073148, 11121208, 12333604, 13509384, 14916373, 16441925, 17990458, 19305730, 20873235, 22613198, 24141198, 25327681, 26357107, 27185193, 27824057, 28284962, 28764298, 29178094, 29555246, 29938533, 30381218, 30832570, 31321879, 31796939, 32201471, 32546822, 32832557, 33064172, 33241140]}, "India": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "confirmed": [0, 2, 3, 3, 3, 3, 39, 113, 396, 1024, 3588, 9205, 17615, 27890, 42505, 67161, 95698, 138536, 190609, 257486, 332424, 425282, 548318, 697413, 878254, 1118206, 1435616, 1803695, 2215074, 2647663, 3106348, 3621245, 4204613, 4846427, 5487580, 6074702, 6623815, 7120538, 7550273, 7909959, 8229313, 8553657, 8845127, 9139865, 9431691, 9677203, 9884100, 10055560, 10207871, 10340469, 10466595, 10571773, 10667736, 10757610, 10838194, 10916589, 11005850, 11112241, 11229398, 11385339, 11646081, 12039644, 12589067, 13527717, 15061805, 17313163, 19925517, 22662575, 24965463, 26752447]}, "Brazil": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "confirmed": [0, 0, 0, 0, 0, 2, 20, 162, 1546, 4256, 11130, 22192, 38654, 63100, 101826, 162699, 241080, 366033, 516137, 694881, 868705, 1086536, 1351439, 1605695, 1867976, 2101399, 2421666, 2736058, 3041127, 3343114, 3608459, 3864604, 4140488, 4332991, 4546587, 4734745, 4917689, 5096704, 5238392, 5396596, 5547951, 5666389, 5865295, 6074061, 6318270, 6606947, 6906811, 7242625, 7487155, 7736514, 8110118, 8492403, 8850334, 9208521, 9528972, 9848008, 10173817, 10558091, 11028185, 11490864, 12006259, 12545611, 12992213, 13491107, 13950997, 14348961, 14762684, 15191195, 15636709, 16093784]}, "France": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "confirmed": [3, 6, 11, 12, 12, 130, 1125, 4532, 16761, 40296, 48225, 108792, 151955, 162280, 170540, 178404, 181703, 184259, 190975, 193363, 196867, 200490, 203157, 206682, 210402, 214178, 220020, 227304, 237408, 257994, 282498, 318047, 364943, 421519, 493500, 579223, 660372, 777378, 940548, 1138167, 1460575, 1837135, 2033420, 2192770, 2272523, 2347630, 2432601, 2529797, 2616544, 2712975, 2840826, 2969034, 3112176, 3255994, 3396055, 3524518, 3664622, 3815688, 3964121, 4131895, 4343115, 4606307, 4883346, 5119625, 5350558, 5559156, 5713420, 5838327, 5939130, 5665101]}, "Turkey": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "confirmed": [0, 0, 0, 0, 0, 0, 0, 6, 1236, 9217, 27069, 56956, 86306, 110130, 126045, 138657, 149435, 156827, 163942, 170132, 178239, 187685, 197239, 205758, 212993, 219641, 226100, 232856, 240804, 249309, 258249, 268546, 279806, 291162, 302867, 314433, 324443, 335533, 347493, 361801, 377473, 394255, 414278, 446822, 607628, 828295, 1836728, 2024601, 2147578, 2241912, 2326256, 2387101, 2429605, 2477463, 2531456, 2586183, 2638422, 2701588, 2780417, 2879390, 3013122, 3208173, 3487050, 3849011, 4268447, 4629969, 4875388, 5031332, 5117374, 5186487]}}, "total_deaths_top20": {"countries": ["US", "Brazil", "India", "Mexico", "Peru", "United Kingdom", "Italy", "Russia", "France", "Germany", "Colombia", "Spain", "Iran", "Argentina", "Poland", "South Africa", "Ukraine", "Indonesia", "Turkey", "Romania"], "values": [589931, 461365, 325972, 223455, 182982, 154478, 126002, 118781, 109523, 88350, 87747, 79905, 79741, 77108, 73682, 56363, 52414, 50262, 47271, 30247]}, "china_provinces": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "series": {"Hubei": [1058, 11177, 29631, 58182, 64084, 66907, 67707, 67794, 67800, 67801, 67803, 67803, 68128, 68128, 68128, 68134, 68134, 68135, 68135, 68135, 68135, 68135, 68135, 68135, 68135, 68135, 68135, 68138, 68139, 68139, 68139, 68139, 68139, 68139, 68139, 68139, 68139, 68139, 68139, 68139, 68139, 68147, 68148, 68148, 68148, 68149, 68149, 68149, 68149, 68149, 68149, 68149, 68150, 68150, 68150, 68150, 68151, 68151, 68151, 68151, 68151, 68152, 68152, 68154, 68155, 68157, 68158, 68158, 68158, 68159], "Hong Kong": [8, 15, 29, 57, 74, 96, 114, 145, 317, 577, 882, 1004, 1025, 1037, 1039, 1047, 1055, 1065, 1084, 1106, 1109, 1131, 1199, 1268, 1469, 1885, 2633, 3511, 4079, 4480, 4682, 4801, 4878, 4957, 5032, 5065, 5113, 5182, 5241, 5295, 5330, 5374, 5458, 5628, 6238, 6897, 7541, 8152, 8610, 8964, 9242, 9557, 10085, 10452, 10635, 10779, 10868, 11005, 11090, 11281, 11379, 11446, 11508, 11581, 11683, 11736, 11784, 11807, 11824, 11832], "Unknown": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1873, 2243, 2516, 2749, 2878, 2963, 3038, 3218, 3350, 3390, 3434, 3485, 3520, 3544, 3591, 3669, 3862, 3879, 3985, 4128, 4283, 4377, 4507, 4654, 4790, 4933, 5065, 5222, 5350, 5492, 5853, 6151, 6219, 6291, 6328, 6368, 6409, 6471, 6575, 6648, 6930, 7307, 7707, 7764, 7837, 7920, 7985, 8032, 8116, 8199, 8248, 8354, 8466, 8531, 8639, 8726, 8824, 8897, 9020, 9141], "Guangdong": [111, 632, 1131, 1316, 1342, 1349, 1352, 1360, 1413, 1475, 1524, 1552, 1580, 1587, 1588, 1589, 1590, 1592, 1595, 1602, 1625, 1634, 1637, 1643, 1650, 1659, 1672, 1683, 1696, 1720, 1727, 1739, 1767, 1778, 1800, 1819, 1841, 1861, 1884, 1908, 1927, 1949, 1968, 1979, 1989, 2004, 2017, 2031, 2039, 2053, 2075, 2087, 2106, 2125, 2144, 2163, 2187, 2212, 2233, 2245, 2253, 2275, 2287, 2299, 2319, 2329, 2354, 2372, 2396, 2412], "Shanghai": [40, 182, 293, 328, 335, 337, 342, 353, 404, 492, 531, 607, 635, 642, 655, 659, 666, 668, 672, 678, 692, 701, 708, 716, 725, 733, 741, 749, 786, 828, 880, 903, 922, 947, 974, 992, 1022, 1053, 1090, 1139, 1187, 1254, 1277, 1308, 1330, 1366, 1412, 1455, 1494, 1530, 1564, 1598, 1644, 1698, 1739, 1760, 1783, 1796, 1816, 1835, 1855, 1879, 1900, 1925, 1943, 1969, 1996, 2016, 2037, 2069], "Heilongjiang": [15, 95, 307, 445, 480, 480, 481, 482, 484, 484, 504, 684, 898, 936, 944, 945, 945, 945, 945, 947, 947, 947, 947, 947, 947, 947, 947, 947, 947, 948, 948, 948, 948, 948, 948, 948, 948, 948, 948, 948, 949, 949, 949, 949, 949, 949, 958, 961, 961, 969, 971, 1116, 1394, 1583, 1609, 1609, 1610, 1610, 1610, 1610, 1610, 1610, 1610, 1610, 1610, 1610, 1610, 1610, 1610, 1612], "Zhejiang": [104, 661, 1075, 1167, 1205, 1205, 1215, 1231, 1238, 1254, 1263, 1267, 1268, 1268, 1268, 1268, 1268, 1268, 1268, 1268, 1268, 1269, 1269, 1269, 1270, 1270, 1270, 1270, 1273, 1275, 1277, 1278, 1278, 1280, 1282, 1282, 1282, 1283, 1283, 1283, 1286, 1290, 1291, 1293, 1294, 1295, 1297, 1299, 1305, 1306, 1308, 1311, 1316, 1316, 1316, 1320, 1320, 1321, 1322, 1322, 1323, 1323, 1324, 1325, 1328, 1331, 1344, 1346, 1355, 1362], "Hebei": [13, 104, 206, 300, 311, 318, 318, 318, 319, 319, 327, 327, 328, 328, 328, 328, 328, 328, 328, 328, 331, 346, 349, 349, 349, 349, 349, 349, 349, 351, 359, 362, 365, 365, 365, 365, 365, 367, 368, 369, 373, 373, 373, 373, 373, 373, 373, 373, 373, 378, 640, 1157, 1294, 1313, 1316, 1317, 1317, 1317, 1317, 1317, 1317, 1317, 1317, 1317, 1317, 1317, 1317, 1317, 1317, 1317], "Henan": [83, 493, 1033, 1231, 1271, 1272, 1272, 1273, 1274, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1276, 1277, 1279, 1280, 1281, 1281, 1281, 1283, 1284, 1286, 1288, 1288, 1289, 1295, 1295, 1297, 1298, 1299, 1301, 1303, 1303, 1303, 1303, 1304, 1304, 1304, 1307, 1309, 1309, 1310, 1311, 1311, 1312, 1312, 1312, 1312, 1313, 1314], "Beijing": [68, 191, 326, 380, 399, 413, 428, 442, 522, 577, 586, 589, 593, 593, 593, 593, 593, 593, 593, 594, 673, 830, 912, 929, 929, 929, 929, 933, 935, 935, 935, 935, 935, 935, 935, 936, 936, 937, 937, 940, 942, 945, 947, 950, 950, 952, 955, 961, 972, 992, 997, 1006, 1028, 1038, 1046, 1046, 1047, 1049, 1049, 1049, 1049, 1049, 1052, 1057, 1057, 1057, 1057, 1057, 1057, 1058]}}, "eu_daily_new": {"Germany": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "values": [0, 2, 1, 0, 0, 51, 107, 1043, 1948, 3965, 5936, 2821, 2458, 1737, 793, 667, 583, 431, 286, 301, 247, 687, 256, 239, 248, 202, 305, 240, 555, 625, 782, 785, 988, 948, 1345, 1410, 2279, 3483, 5587, 11176, 14177, 16017, 16947, 15741, 14611, 17767, 20200, 22771, 13755, 10315, 16946, 13882, 12257, 11192, 8616, 6114, 7676, 7890, 8103, 10790, 13733, 17176, 12196, 17855, 19185, 18773, 16290, 12656, 8500, 6714]}, "France": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "values": [0, 0, 0, 0, 0, 30, 177, 36, 2298, 2603, 849, 50747, 1094, 633, 361, 249, 140, 0, 232, 341, 390, 343, 0, 12, 16, 4, 4, 3, 6, 3020, 4735, 5382, 7016, 6345, 10536, 10635, 12504, 15994, 29837, 6616, 46179, 38562, 27192, 13130, 9763, 10949, 11533, 12858, 8867, 12491, 15944, 16642, 18436, 19336, 19715, 16675, 22046, 19952, 21835, 26451, 30664, 37128, 80635, 117902, 29378, 24505, 9921, 9128, 14026, 9766]}, "Italy": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "values": [0, 0, 0, 0, 93, 566, 1492, 3590, 5560, 5217, 4316, 4092, 3047, 2324, 1389, 802, 675, 531, 333, 197, 338, 224, 174, 192, 234, 218, 254, 238, 463, 477, 1209, 1365, 1296, 1456, 1587, 1766, 2578, 5456, 11705, 21273, 29905, 32614, 33977, 28337, 20646, 18887, 17937, 15102, 8937, 14245, 18625, 12544, 11628, 11249, 11640, 11060, 13450, 17440, 20724, 21304, 20045, 19604, 18017, 15737, 12688, 13157, 9145, 8289, 5748, 3993]}}, "eu_peaks": {"Germany": {"value": 39988, "date": "2020-12-26"}, "France": {"value": 117902, "date": "2021-04-11"}, "Italy": {"value": 40902, "date": "2020-11-13"}}, "canada_death_rate": {"provinces": ["Manitoba", "Quebec", "British Columbia", "Saskatchewan", "Ontario", "New Brunswick", "Alberta", "Yukon", "Newfoundland and Labrador", "Nova Scotia", "Nunavut", "Northwest Territories", "Prince Edward Island", "Repatriated Travellers", "Grand Princess"], "values": [1.59, 1.38, 1.32, 1.23, 1.01, 0.94, 0.89, 0.64, 0.58, 0.56, 0.2, 0.19, 0.16, 0.0, 0.0]}, "top3_death_rate_2020": {"countries": ["Peru", "Mexico", "Ecuador"], "values": [9.17, 8.82, 6.6]}, "us_deaths_series": {"dates": ["2020-01-26", "2020-02-02", "2020-02-09", "2020-02-16", "2020-02-23", "2020-03-01", "2020-03-08", "2020-03-15", "2020-03-22", "2020-03-29", "2020-04-05", "2020-04-12", "2020-04-19", "2020-04-26", "2020-05-03", "2020-05-10", "2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05", "2020-07-12", "2020-07-19", "2020-07-26", "2020-08-02", "2020-08-09", "2020-08-16", "2020-08-23", "2020-08-30", "2020-09-06", "2020-09-13", "2020-09-20", "2020-09-27", "2020-10-04", "2020-10-11", "2020-10-18", "2020-10-25", "2020-11-01", "2020-11-08", "2020-11-15", "2020-11-22", "2020-11-29", "2020-12-06", "2020-12-13", "2020-12-20", "2020-12-27", "2021-01-03", "2021-01-10", "2021-01-17", "2021-01-24", "2021-01-31", "2021-02-07", "2021-02-14", "2021-02-21", "2021-02-28", "2021-03-07", "2021-03-14", "2021-03-21", "2021-03-28", "2021-04-04", "2021-04-11", "2021-04-18", "2021-04-25", "2021-05-02", "2021-05-09", "2021-05-16", "2021-05-23"], "values": [0, 0, 0, 0, 0, 1, 21, 70, 603, 3573, 13227, 28203, 43510, 58354, 71492, 83505, 93191, 101410, 107857, 113569, 118522, 122642, 126512, 130201, 135632, 141197, 147744, 155535, 162916, 170034, 176057, 182309, 188127, 193202, 198474, 203835, 208798, 213897, 219042, 224920, 231054, 238587, 246908, 258178, 269192, 285323, 302831, 321898, 338068, 356837, 379769, 403095, 424638, 446602, 467504, 484729, 497922, 511827, 523337, 531921, 539089, 545753, 551412, 558265, 563355, 568346, 573232, 577827, 581842, 585658]}, "avg_daily_deaths_top5": {"countries": ["US", "Brazil", "India", "Mexico", "Peru"], "values": [1194.19, 933.94, 659.86, 452.34, 370.41]}, "canada_australia_recovery": {"countries": ["Australia", "Canada"], "values": [79.38, 83.63]}, "south_africa": {"recovered": 1554184, "deaths": 56363}, "recovery_ratio_us": {"months": ["2020-03", "2020-04", "2020-05", "2020-06", "2020-07", "2020-08", "2020-09", "2020-10", "2020-11", "2020-12", "2021-01", "2021-02", "2021-03", "2021-04", "2021-05"], "values": [3.65, 16.53, 41.28, 32.18, 37.77, 49.84, 54.67, 39.99, 34.22, 17.58, 0.0, 0.0, 0.0, 0.0, 0.0]}, "recovery_ratio_india": {"months": ["2020-03", "2020-04", "2020-05", "2020-06", "2020-07", "2020-08", "2020-09", "2020-10", "2020-11", "2020-12", "2021-01", "2021-02", "2021-03", "2021-04", "2021-05"], "values": [8.61, 26.73, 53.15, 64.85, 67.22, 87.49, 92.82, 118.53, 109.33, 120.63, 117.6, 99.11, 62.03, 60.63, 111.91]}, "monthly_table": [{"Country/Region": "Argentina", "YearMonth": "2020-01", "Confirmed": 0, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Argentina", "YearMonth": "2020-02", "Confirmed": 0, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Argentina", "YearMonth": "2020-03", "Confirmed": 1054, "Deaths": 27, "Recovered": 240}, {"Country/Region": "Argentina", "YearMonth": "2020-04", "Confirmed": 3374, "Deaths": 191, "Recovered": 1016}, {"Country/Region": "Argentina", "YearMonth": "2020-05", "Confirmed": 12423, "Deaths": 321, "Recovered": 4080}, {"Country/Region": "Argentina", "YearMonth": "2020-06", "Confirmed": 47679, "Deaths": 768, "Recovered": 16692}, {"Country/Region": "Argentina", "YearMonth": "2020-07", "Confirmed": 126772, "Deaths": 2236, "Recovered": 61752}, {"Country/Region": "Argentina", "YearMonth": "2020-08", "Confirmed": 226433, "Deaths": 5117, "Recovered": 217415}, {"Country/Region": "Argentina", "YearMonth": "2020-09", "Confirmed": 333266, "Deaths": 8277, "Recovered": 293450}, {"Country/Region": "Argentina", "YearMonth": "2020-10", "Confirmed": 415923, "Deaths": 14065, "Recovered": 379294}, {"Country/Region": "Argentina", "YearMonth": "2020-11", "Confirmed": 257609, "Deaths": 7728, "Recovered": 283288}, {"Country/Region": "Argentina", "YearMonth": "2020-12", "Confirmed": 200981, "Deaths": 4515, "Recovered": 169449}, {"Country/Region": "Argentina", "YearMonth": "2021-01", "Confirmed": 301725, "Deaths": 4729, "Recovered": 294974}, {"Country/Region": "Argentina", "YearMonth": "2021-02", "Confirmed": 180126, "Deaths": 3991, "Recovered": 183371}, {"Country/Region": "Argentina", "YearMonth": "2021-03", "Confirmed": 241456, "Deaths": 3893, "Recovered": 197595}, {"Country/Region": "Argentina", "YearMonth": "2021-04", "Confirmed": 628542, "Deaths": 8007, "Recovered": 531690}, {"Country/Region": "Argentina", "YearMonth": "2021-05", "Confirmed": 754900, "Deaths": 13243, "Recovered": 654161}, {"Country/Region": "Brazil", "YearMonth": "2020-01", "Confirmed": 0, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Brazil", "YearMonth": "2020-02", "Confirmed": 2, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Brazil", "YearMonth": "2020-03", "Confirmed": 5715, "Deaths": 201, "Recovered": 127}, {"Country/Region": "Brazil", "YearMonth": "2020-04", "Confirmed": 81470, "Deaths": 5805, "Recovered": 35808}, {"Country/Region": "Brazil", "YearMonth": "2020-05", "Confirmed": 428950, "Deaths": 23361, "Recovered": 170620}, {"Country/Region": "Brazil", "YearMonth": "2020-06", "Confirmed": 916328, "Deaths": 30425, "Recovered": 581763}, {"Country/Region": "Brazil", "YearMonth": "2020-07", "Confirmed": 1257782, "Deaths": 32936, "Recovered": 1220536}, {"Country/Region": "Brazil", "YearMonth": "2020-08", "Confirmed": 1244378, "Deaths": 28890, "Recovered": 1259737}, {"Country/Region": "Brazil", "YearMonth": "2020-09", "Confirmed": 902536, "Deaths": 22460, "Recovered": 1006183}, {"Country/Region": "Brazil", "YearMonth": "2020-10", "Confirmed": 720398, "Deaths": 15894, "Recovered": 730387}, {"Country/Region": "Brazil", "YearMonth": "2020-11", "Confirmed": 804202, "Deaths": 13296, "Recovered": 592641}, {"Country/Region": "Brazil", "YearMonth": "2020-12", "Confirmed": 1339067, "Deaths": 21804, "Recovered": 1251042}, {"Country/Region": "Brazil", "YearMonth": "2021-01", "Confirmed": 1527489, "Deaths": 29576, "Recovered": 1327529}, {"Country/Region": "Brazil", "YearMonth": "2021-02", "Confirmed": 1349570, "Deaths": 30531, "Recovered": 1205943}, {"Country/Region": "Brazil", "YearMonth": "2021-03", "Confirmed": 2205301, "Deaths": 66959, "Recovered": 1799055}, {"Country/Region": "Brazil", "YearMonth": "2021-04", "Confirmed": 1911712, "Deaths": 82392, "Recovered": 1810580}, {"Country/Region": "Brazil", "YearMonth": "2021-05", "Confirmed": 1804728, "Deaths": 56835, "Recovered": 1504273}, {"Country/Region": "Colombia", "YearMonth": "2020-01", "Confirmed": 0, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Colombia", "YearMonth": "2020-02", "Confirmed": 0, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Colombia", "YearMonth": "2020-03", "Confirmed": 906, "Deaths": 16, "Recovered": 31}, {"Country/Region": "Colombia", "YearMonth": "2020-04", "Confirmed": 5601, "Deaths": 277, "Recovered": 1408}, {"Country/Region": "Colombia", "YearMonth": "2020-05", "Confirmed": 22876, "Deaths": 646, "Recovered": 5593}, {"Country/Region": "Colombia", "YearMonth": "2020-06", "Confirmed": 68463, "Deaths": 2395, "Recovered": 32989}, {"Country/Region": "Colombia", "YearMonth": "2020-07", "Confirmed": 197662, "Deaths": 6771, "Recovered": 114366}, {"Country/Region": "Colombia", "YearMonth": "2020-08", "Confirmed": 319586, "Deaths": 9557, "Recovered": 305073}, {"Country/Region": "Colombia", "YearMonth": "2020-09", "Confirmed": 214585, "Deaths": 6336, "Recovered": 284193}, {"Country/Region": "Colombia", "YearMonth": "2020-10", "Confirmed": 244505, "Deaths": 5316, "Recovered": 225577}, {"Country/Region": "Colombia", "YearMonth": "2020-11", "Confirmed": 242622, "Deaths": 5452, "Recovered": 307410}, {"Country/Region": "Colombia", "YearMonth": "2020-12", "Confirmed": 325969, "Deaths": 6447, "Recovered": 297930}, {"Country/Region": "Colombia", "YearMonth": "2021-01", "Confirmed": 452109, "Deaths": 10770, "Recovered": 429903}, {"Country/Region": "Colombia", "YearMonth": "2021-02", "Confirmed": 156806, "Deaths": 5783, "Recovered": 209927}, {"Country/Region": "Colombia", "YearMonth": "2021-03", "Confirmed": 154687, "Deaths": 3656, "Recovered": 137266}, {"Country/Region": "Colombia", "YearMonth": "2021-04", "Confirmed": 453347, "Deaths": 10298, "Recovered": 383793}, {"Country/Region": "Colombia", "YearMonth": "2021-05", "Confirmed": 503337, "Deaths": 14027, "Recovered": 472241}, {"Country/Region": "France", "YearMonth": "2020-01", "Confirmed": 5, "Deaths": 0, "Recovered": 0}, {"Country/Region": "France", "YearMonth": "2020-02", "Confirmed": 95, "Deaths": 2, "Recovered": 12}, {"Country/Region": "France", "YearMonth": "2020-03", "Confirmed": 52181, "Deaths": 3524, "Recovered": 9501}, {"Country/Region": "France", "YearMonth": "2020-04", "Confirmed": 140309, "Deaths": 20823, "Recovered": 39963}, {"Country/Region": "France", "YearMonth": "2020-05", "Confirmed": 22553, "Deaths": 4753, "Recovered": 18997}, {"Country/Region": "France", "YearMonth": "2020-06", "Confirmed": 17549, "Deaths": 1041, "Recovered": 7926}, {"Country/Region": "France", "YearMonth": "2020-07", "Confirmed": 22995, "Deaths": 436, "Recovered": 5365}, {"Country/Region": "France", "YearMonth": "2020-08", "Confirmed": 93921, "Deaths": 378, "Recovered": 5026}, {"Country/Region": "France", "YearMonth": "2020-09", "Confirmed": 284733, "Deaths": 1352, "Recovered": 12373}, {"Country/Region": "France", "YearMonth": "2020-10", "Confirmed": 808503, "Deaths": 4870, "Recovered": 24463}, {"Country/Region": "France", "YearMonth": "2020-11", "Confirmed": 908555, "Deaths": 16025, "Recovered": 44818}, {"Country/Region": "France", "YearMonth": "2020-12", "Confirmed": 400830, "Deaths": 11940, "Recovered": 32229}, {"Country/Region": "France", "YearMonth": "2021-01", "Confirmed": 578334, "Deaths": 11442, "Recovered": 30470}, {"Country/Region": "France", "YearMonth": "2021-02", "Confirmed": 559694, "Deaths": 10379, "Recovered": 31037}, {"Country/Region": "France", "YearMonth": "2021-03", "Confirmed": 889498, "Deaths": 9219, "Recovered": 39818}, {"Country/Region": "France", "YearMonth": "2021-04", "Confirmed": 972643, "Deaths": 8878, "Recovered": 45013}, {"Country/Region": "France", "YearMonth": "2021-05", "Confirmed": 390888, "Deaths": 4847, "Recovered": 44398}, {"Country/Region": "Germany", "YearMonth": "2020-01", "Confirmed": 5, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Germany", "YearMonth": "2020-02", "Confirmed": 61, "Deaths": 0, "Recovered": 16}, {"Country/Region": "Germany", "YearMonth": "2020-03", "Confirmed": 61847, "Deaths": 584, "Recovered": 16084}, {"Country/Region": "Germany", "YearMonth": "2020-04", "Confirmed": 97206, "Deaths": 5705, "Recovered": 107400}, {"Country/Region": "Germany", "YearMonth": "2020-05", "Confirmed": 22363, "Deaths": 2212, "Recovered": 41852}, {"Country/Region": "Germany", "YearMonth": "2020-06", "Confirmed": 12777, "Deaths": 474, "Recovered": 12748}, {"Country/Region": "Germany", "YearMonth": "2020-07", "Confirmed": 14439, "Deaths": 168, "Recovered": 13892}, {"Country/Region": "Germany", "YearMonth": "2020-08", "Confirmed": 33683, "Deaths": 164, "Recovered": 24803}, {"Country/Region": "Germany", "YearMonth": "2020-09", "Confirmed": 46838, "Deaths": 190, "Recovered": 40066}, {"Country/Region": "Germany", "YearMonth": "2020-10", "Confirmed": 229534, "Deaths": 964, "Recovered": 99549}, {"Country/Region": "Germany", "YearMonth": "2020-11", "Confirmed": 535116, "Deaths": 5796, "Recovered": 392809}, {"Country/Region": "Germany", "YearMonth": "2020-12", "Confirmed": 665868, "Deaths": 16823, "Recovered": 601489}, {"Country/Region": "Germany", "YearMonth": "2021-01", "Confirmed": 496626, "Deaths": 23874, "Recovered": 589338}, {"Country/Region": "Germany", "YearMonth": "2021-02", "Confirmed": 225973, "Deaths": 13100, "Recovered": 319502}, {"Country/Region": "Germany", "YearMonth": "2021-03", "Confirmed": 366537, "Deaths": 6297, "Recovered": 280112}, {"Country/Region": "Germany", "YearMonth": "2021-04", "Confirmed": 572724, "Deaths": 6508, "Recovered": 468980}, {"Country/Region": "Germany", "YearMonth": "2021-05", "Confirmed": 293699, "Deaths": 5500, "Recovered": 471060}, {"Country/Region": "India", "YearMonth": "2020-01", "Confirmed": 1, "Deaths": 0, "Recovered": 0}, {"Country/Region": "India", "YearMonth": "2020-02", "Confirmed": 2, "Deaths": 0, "Recovered": 3}, {"Country/Region": "India", "YearMonth": "2020-03", "Confirmed": 1394, "Deaths": 36, "Recovered": 120}, {"Country/Region": "India", "YearMonth": "2020-04", "Confirmed": 33466, "Deaths": 1119, "Recovered": 8945}, {"Country/Region": "India", "YearMonth": "2020-05", "Confirmed": 155746, "Deaths": 4254, "Recovered": 82784}, {"Country/Region": "India", "YearMonth": "2020-06", "Confirmed": 394872, "Deaths": 11992, "Recovered": 256060}, {"Country/Region": "India", "YearMonth": "2020-07", "Confirmed": 1110507, "Deaths": 19111, "Recovered": 746462}, {"Country/Region": "India", "YearMonth": "2020-08", "Confirmed": 1995178, "Deaths": 28777, "Recovered": 1745508}, {"Country/Region": "India", "YearMonth": "2020-09", "Confirmed": 2621418, "Deaths": 33390, "Recovered": 2433319}, {"Country/Region": "India", "YearMonth": "2020-10", "Confirmed": 1871498, "Deaths": 23433, "Recovered": 2218312}, {"Country/Region": "India", "YearMonth": "2020-11", "Confirmed": 1278727, "Deaths": 15510, "Recovered": 1398072}, {"Country/Region": "India", "YearMonth": "2020-12", "Confirmed": 823900, "Deaths": 11373, "Recovered": 993876}, {"Country/Region": "India", "YearMonth": "2021-01", "Confirmed": 470901, "Deaths": 5398, "Recovered": 553780}, {"Country/Region": "India", "YearMonth": "2021-02", "Confirmed": 354631, "Deaths": 2765, "Recovered": 351469}, {"Country/Region": "India", "YearMonth": "2021-03", "Confirmed": 1109424, "Deaths": 5770, "Recovered": 688231}, {"Country/Region": "India", "YearMonth": "2021-04", "Confirmed": 6943304, "Deaths": 48926, "Recovered": 4209723}, {"Country/Region": "India", "YearMonth": "2021-05", "Confirmed": 8729831, "Deaths": 114119, "Recovered": 9769914}, {"Country/Region": "Italy", "YearMonth": "2020-01", "Confirmed": 2, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Italy", "YearMonth": "2020-02", "Confirmed": 1126, "Deaths": 29, "Recovered": 47}, {"Country/Region": "Italy", "YearMonth": "2020-03", "Confirmed": 104664, "Deaths": 12399, "Recovered": 15683}, {"Country/Region": "Italy", "YearMonth": "2020-04", "Confirmed": 99671, "Deaths": 15539, "Recovered": 60216}, {"Country/Region": "Italy", "YearMonth": "2020-05", "Confirmed": 27534, "Deaths": 5448, "Recovered": 81562}, {"Country/Region": "Italy", "YearMonth": "2020-06", "Confirmed": 7729, "Deaths": 1383, "Recovered": 32741}, {"Country/Region": "Italy", "YearMonth": "2020-07", "Confirmed": 6959, "Deaths": 374, "Recovered": 9726}, {"Country/Region": "Italy", "YearMonth": "2020-08", "Confirmed": 21677, "Deaths": 342, "Recovered": 8562}, {"Country/Region": "Italy", "YearMonth": "2020-09", "Confirmed": 45647, "Deaths": 411, "Recovered": 20051}, {"Country/Region": "Italy", "YearMonth": "2020-10", "Confirmed": 364569, "Deaths": 2724, "Recovered": 61722}, {"Country/Region": "Italy", "YearMonth": "2020-11", "Confirmed": 922124, "Deaths": 16958, "Recovered": 468081}, {"Country/Region": "Italy", "YearMonth": "2020-12", "Confirmed": 505612, "Deaths": 18583, "Recovered": 705604}, {"Country/Region": "Italy", "YearMonth": "2021-01", "Confirmed": 445866, "Deaths": 14357, "Recovered": 547437}, {"Country/Region": "Italy", "YearMonth": "2021-02", "Confirmed": 372233, "Deaths": 9183, "Recovered": 394651}, {"Country/Region": "Italy", "YearMonth": "2021-03", "Confirmed": 659634, "Deaths": 11647, "Recovered": 507846}, {"Country/Region": "Italy", "YearMonth": "2021-04", "Confirmed": 437754, "Deaths": 11461, "Recovered": 552531}, {"Country/Region": "Italy", "YearMonth": "2021-05", "Confirmed": 190402, "Deaths": 5195, "Recovered": 379511}, {"Country/Region": "Russia", "YearMonth": "2020-01", "Confirmed": 2, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Russia", "YearMonth": "2020-02", "Confirmed": 0, "Deaths": 0, "Recovered": 2}, {"Country/Region": "Russia", "YearMonth": "2020-03", "Confirmed": 2335, "Deaths": 17, "Recovered": 119}, {"Country/Region": "Russia", "YearMonth": "2020-04", "Confirmed": 104161, "Deaths": 1056, "Recovered": 11498}, {"Country/Region": "Russia", "YearMonth": "2020-05", "Confirmed": 299345, "Deaths": 3620, "Recovered": 160264}, {"Country/Region": "Russia", "YearMonth": "2020-06", "Confirmed": 241086, "Deaths": 4613, "Recovered": 240090}, {"Country/Region": "Russia", "YearMonth": "2020-07", "Confirmed": 191532, "Deaths": 4633, "Recovered": 225244}, {"Country/Region": "Russia", "YearMonth": "2020-08", "Confirmed": 153941, "Deaths": 3189, "Recovered": 170122}, {"Country/Region": "Russia", "YearMonth": "2020-09", "Confirmed": 178397, "Deaths": 3502, "Recovered": 147449}, {"Country/Region": "Russia", "YearMonth": "2020-10", "Confirmed": 435468, "Deaths": 7157, "Recovered": 253652}, {"Country/Region": "Russia", "YearMonth": "2020-11", "Confirmed": 669669, "Deaths": 11704, "Recovered": 555053}, {"Country/Region": "Russia", "YearMonth": "2020-12", "Confirmed": 851411, "Deaths": 16780, "Recovered": 764229}, {"Country/Region": "Russia", "YearMonth": "2021-01", "Confirmed": 681001, "Deaths": 15758, "Recovered": 736889}, {"Country/Region": "Russia", "YearMonth": "2021-02", "Confirmed": 390052, "Deaths": 12671, "Recovered": 504414}, {"Country/Region": "Russia", "YearMonth": "2021-03", "Confirmed": 295834, "Deaths": 12519, "Recovered": 349684}, {"Country/Region": "Russia", "YearMonth": "2021-04", "Confirmed": 256521, "Deaths": 11071, "Recovered": 258795}, {"Country/Region": "Russia", "YearMonth": "2021-05", "Confirmed": 244858, "Deaths": 10491, "Recovered": 238918}, {"Country/Region": "Spain", "YearMonth": "2020-01", "Confirmed": 0, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2020-02", "Confirmed": 45, "Deaths": 0, "Recovered": 2}, {"Country/Region": "Spain", "YearMonth": "2020-03", "Confirmed": 95878, "Deaths": 8464, "Recovered": 19257}, {"Country/Region": "Spain", "YearMonth": "2020-04", "Confirmed": 127546, "Deaths": 16079, "Recovered": 92791}, {"Country/Region": "Spain", "YearMonth": "2020-05", "Confirmed": 26416, "Deaths": 4502, "Recovered": 38326}, {"Country/Region": "Spain", "YearMonth": "2020-06", "Confirmed": 9792, "Deaths": 1228, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2020-07", "Confirmed": 39251, "Deaths": 90, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2020-08", "Confirmed": 174336, "Deaths": 651, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2020-09", "Confirmed": 306330, "Deaths": 2697, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2020-10", "Confirmed": 416490, "Deaths": 4087, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2020-11", "Confirmed": 462509, "Deaths": 9191, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2020-12", "Confirmed": 280078, "Deaths": 5768, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2021-01", "Confirmed": 814854, "Deaths": 7482, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2021-02", "Confirmed": 445434, "Deaths": 10823, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2021-03", "Confirmed": 170147, "Deaths": 6317, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2021-04", "Confirmed": 239724, "Deaths": 2757, "Recovered": 0}, {"Country/Region": "Spain", "YearMonth": "2021-05", "Confirmed": 144581, "Deaths": 1689, "Recovered": 0}, {"Country/Region": "Turkey", "YearMonth": "2020-01", "Confirmed": 0, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Turkey", "YearMonth": "2020-02", "Confirmed": 0, "Deaths": 0, "Recovered": 0}, {"Country/Region": "Turkey", "YearMonth": "2020-03", "Confirmed": 13531, "Deaths": 214, "Recovered": 243}, {"Country/Region": "Turkey", "YearMonth": "2020-04", "Confirmed": 106673, "Deaths": 2960, "Recovered": 48643}, {"Country/Region": "Turkey", "YearMonth": "2020-05", "Confirmed": 43738, "Deaths": 1366, "Recovered": 79087}, {"Country/Region": "Turkey", "YearMonth": "2020-06", "Confirmed": 35964, "Deaths": 591, "Recovered": 45138}, {"Country/Region": "Turkey", "YearMonth": "2020-07", "Confirmed": 30967, "Deaths": 560, "Recovered": 41424}, {"Country/Region": "Turkey", "YearMonth": "2020-08", "Confirmed": 39260, "Deaths": 679, "Recovered": 30391}, {"Country/Region": "Turkey", "YearMonth": "2020-09", "Confirmed": 48530, "Deaths": 1825, "Recovered": 34823}, {"Country/Region": "Turkey", "YearMonth": "2020-10", "Confirmed": 56704, "Deaths": 2057, "Recovered": 44222}, {"Country/Region": "Turkey", "YearMonth": "2020-11", "Confirmed": 263480, "Deaths": 3494, "Recovered": 80756}, {"Country/Region": "Turkey", "YearMonth": "2020-12", "Confirmed": 1569805, "Deaths": 7135, "Recovered": 1695923}, {"Country/Region": "Turkey", "YearMonth": "2021-01", "Confirmed": 268811, "Deaths": 5112, "Recovered": 261765}, {"Country/Region": "Turkey", "YearMonth": "2021-02", "Confirmed": 224125, "Deaths": 2576, "Recovered": 209819}, {"Country/Region": "Turkey", "YearMonth": "2021-03", "Confirmed": 615594, "Deaths": 2968, "Recovered": 441992}, {"Country/Region": "Turkey", "YearMonth": "2021-04", "Confirmed": 1503409, "Deaths": 8594, "Recovered": 1309671}, {"Country/Region": "Turkey", "YearMonth": "2021-05", "Confirmed": 415387, "Deaths": 7140, "Recovered": 770382}, {"Country/Region": "US", "YearMonth": "2020-01", "Confirmed": 7, "Deaths": 0, "Recovered": 0}, {"Country/Region": "US", "YearMonth": "2020-02", "Confirmed": 17, "Deaths": 1, "Recovered": 7}, {"Country/Region": "US", "YearMonth": "2020-03", "Confirmed": 192054, "Deaths": 5358, "Recovered": 7017}, {"Country/Region": "US", "YearMonth": "2020-04", "Confirmed": 889071, "Deaths": 61279, "Recovered": 146923}, {"Country/Region": "US", "YearMonth": "2020-05", "Confirmed": 710397, "Deaths": 41219, "Recovered": 293257}, {"Country/Region": "US", "YearMonth": "2020-06", "Confirmed": 857250, "Deaths": 19575, "Recovered": 275873}, {"Country/Region": "US", "YearMonth": "2020-07", "Confirmed": 1899700, "Deaths": 26537, "Recovered": 717529}, {"Country/Region": "US", "YearMonth": "2020-08", "Confirmed": 1497992, "Deaths": 28825, "Recovered": 746665}, {"Country/Region": "US", "YearMonth": "2020-09", "Confirmed": 1199711, "Deaths": 23163, "Recovered": 655863}, {"Country/Region": "US", "YearMonth": "2020-10", "Confirmed": 1930152, "Deaths": 24588, "Recovered": 771790}, {"Country/Region": "US", "YearMonth": "2020-11", "Confirmed": 4491563, "Deaths": 40056, "Recovered": 1537028}, {"Country/Region": "US", "YearMonth": "2020-12", "Confirmed": 6551963, "Deaths": 80003, "Recovered": 1151763}, {"Country/Region": "US", "YearMonth": "2021-01", "Confirmed": 6137229, "Deaths": 95998, "Recovered": 0}, {"Country/Region": "US", "YearMonth": "2021-02", "Confirmed": 2407191, "Deaths": 65225, "Recovered": 0}, {"Country/Region": "US", "YearMonth": "2021-03", "Confirmed": 1815187, "Deaths": 36522, "Recovered": 0}, {"Country/Region": "US", "YearMonth": "2021-04", "Confirmed": 1888570, "Deaths": 23807, "Recovered": 0}, {"Country/Region": "US", "YearMonth": "2021-05", "Confirmed": 904836, "Deaths": 17775, "Recovered": 0}, {"Country/Region": "United Kingdom", "YearMonth": "2020-01", "Confirmed": 2, "Deaths": 1, "Recovered": 0}, {"Country/Region": "United Kingdom", "YearMonth": "2020-02", "Confirmed": 59, "Deaths": 2, "Recovered": 8}, {"Country/Region": "United Kingdom", "YearMonth": "2020-03", "Confirmed": 38727, "Deaths": 5142, "Recovered": 172}, {"Country/Region": "United Kingdom", "YearMonth": "2020-04", "Confirmed": 139977, "Deaths": 33917, "Recovered": 1002}, {"Country/Region": "United Kingdom", "YearMonth": "2020-05", "Confirmed": 78770, "Deaths": 13507, "Recovered": 331}, {"Country/Region": "United Kingdom", "YearMonth": "2020-06", "Confirmed": 27678, "Deaths": 3715, "Recovered": 192}, {"Country/Region": "United Kingdom", "YearMonth": "2020-07", "Confirmed": 19576, "Deaths": 1150, "Recovered": 69}, {"Country/Region": "United Kingdom", "YearMonth": "2020-08", "Confirmed": 33287, "Deaths": 550, "Recovered": 243}, {"Country/Region": "United Kingdom", "YearMonth": "2020-09", "Confirmed": 117771, "Deaths": 891, "Recovered": 693}, {"Country/Region": "United Kingdom", "YearMonth": "2020-10", "Confirmed": 558941, "Deaths": 5433, "Recovered": 466}, {"Country/Region": "United Kingdom", "YearMonth": "2020-11", "Confirmed": 618891, "Deaths": 13451, "Recovered": 732}, {"Country/Region": "United Kingdom", "YearMonth": "2020-12", "Confirmed": 862508, "Deaths": 17348, "Recovered": 1909}, {"Country/Region": "United Kingdom", "YearMonth": "2021-01", "Confirmed": 1331944, "Deaths": 36684, "Recovered": 4174}, {"Country/Region": "United Kingdom", "YearMonth": "2021-02", "Confirmed": 360692, "Deaths": 16847, "Recovered": 1987}, {"Country/Region": "United Kingdom", "YearMonth": "2021-03", "Confirmed": 171156, "Deaths": 4311, "Recovered": 1430}, {"Country/Region": "United Kingdom", "YearMonth": "2021-04", "Confirmed": 77053, "Deaths": 1120, "Recovered": 1610}, {"Country/Region": "United Kingdom", "YearMonth": "2021-05", "Confirmed": 66938, "Deaths": 409, "Recovered": 798}]}
+
+</script>
+<script>
+const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
+
+const COLORS = {
+  amber:'#E3A94B', red:'#C1584F', green:'#4FA98A', cyan:'#7FBFCB',
+  textDim:'#9DB0AC', line:'rgba(255,255,255,0.06)'
+};
+const PALETTE = ['#E3A94B','#7FBFCB','#C1584F','#4FA98A','#B48EAD','#D4B483','#8FA6C9','#C98686','#7FBF9E','#B7A1D6'];
+
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = COLORS.textDim;
+
+function fmtNum(n){
+  if(n === null || n === undefined) return '—';
+  if(Math.abs(n) >= 1e9) return (n/1e9).toFixed(2)+'B';
+  if(Math.abs(n) >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if(Math.abs(n) >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toLocaleString();
+}
+function fmtFull(n){ return n.toLocaleString('en-US'); }
+function fmtDate(d){
+  const dt = new Date(d+'T00:00:00');
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+}
+function fmtMonth(m){
+  const [y,mo] = m.split('-');
+  const dt = new Date(parseInt(y), parseInt(mo)-1, 1);
+  return dt.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+}
+
+const gridOpt = { color:'rgba(255,255,255,0.05)', drawTicks:false };
+const baseScales = {
+  x:{ grid:gridOpt, ticks:{maxRotation:0, autoSkip:true, maxTicksLimit:8} },
+  y:{ grid:gridOpt, ticks:{ callback:v=>fmtNum(v) } }
+};
+
+/* ---------------- TAB NAV ---------------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.page).classList.add('active');
+    // resize charts on show
+    window.dispatchEvent(new Event('resize'));
+  });
+});
+
+/* ================= PAGE 1 ================= */
+function initPage1(){
+  document.getElementById('metaDate').textContent = fmtDate(DATA.kpis.latest_date);
+  document.getElementById('kpiConfirmed').textContent = fmtNum(DATA.kpis.confirmed);
+  document.getElementById('kpiDeaths').textContent = fmtNum(DATA.kpis.deaths);
+  document.getElementById('kpiRecovered').textContent = fmtNum(DATA.kpis.recovered);
+  document.getElementById('kpiCFR').textContent = DATA.kpis.cfr + '%';
+
+  const topCountry = DATA.total_deaths_top20.countries[0];
+  const topVal = DATA.total_deaths_top20.values[0];
+  const topConfirmed = DATA.top5_series[topCountry] ?
+    DATA.top5_series[topCountry].confirmed.slice(-1)[0] : null;
+  document.getElementById('kpiDeathsSub').textContent = topCountry+' highest: '+fmtNum(topVal);
+  document.getElementById('kpiRecSub').textContent = DATA.kpis.recovered ?
+    (DATA.kpis.recovered/DATA.kpis.confirmed*100).toFixed(1)+'% of confirmed' : '';
+
+  document.getElementById('usCallout').innerHTML =
+    '<b>'+topCountry+' leads globally</b> — '+fmtFull(topConfirmed || DATA.total_deaths_top20.values[0])+
+    ' confirmed cases and '+fmtFull(topVal)+' deaths recorded, the highest total of any tracked country.';
+
+  // top5 line chart
+  const labels = DATA.top5_series[Object.keys(DATA.top5_series)[0]].dates;
+  const datasets = Object.keys(DATA.top5_series).map((country,i)=>({
+    label: country,
+    data: DATA.top5_series[country].confirmed,
+    borderColor: PALETTE[i],
+    backgroundColor: PALETTE[i],
+    borderWidth: 2,
+    pointRadius: 0,
+    tension: 0.15
+  }));
+  new Chart(document.getElementById('chartTop5'), {
+    type:'line',
+    data:{ labels: labels.map(fmtDate), datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ mode:'index', intersect:false } },
+      scales: baseScales
+    }
+  });
+  const legend = document.getElementById('top5Legend');
+  Object.keys(DATA.top5_series).forEach((c,i)=>{
+    legend.innerHTML += `<div class="legend-item"><span class="legend-dot" style="background:${PALETTE[i]}"></span>${c}</div>`;
+  });
+
+  // deaths ranked list
+  const maxDeath = Math.max(...DATA.total_deaths_top20.values);
+  const list = document.getElementById('deathsRankList');
+  DATA.total_deaths_top20.countries.forEach((c,i)=>{
+    const v = DATA.total_deaths_top20.values[i];
+    const pct = (v/maxDeath*100).toFixed(1);
+    list.innerHTML += `
+      <div class="rank-row">
+        <div class="rank-idx">${(i+1).toString().padStart(2,'0')}</div>
+        <div class="rank-name">${c}</div>
+        <div class="rank-val">${fmtNum(v)}</div>
+        <div class="rank-bar-bg"><div class="rank-bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+  });
+}
+
+/* ================= PAGE 2 ================= */
+function initPage2(){
+  const chinaDates = DATA.china_provinces.dates.map(fmtDate);
+  const chinaDs = Object.keys(DATA.china_provinces.series).map((prov,i)=>({
+    label: prov, data: DATA.china_provinces.series[prov],
+    borderColor: PALETTE[i%PALETTE.length], backgroundColor: PALETTE[i%PALETTE.length],
+    borderWidth: 1.5, pointRadius:0, tension:0.1
+  }));
+  new Chart(document.getElementById('chartChina'), {
+    type:'line',
+    data:{ labels: chinaDates, datasets: chinaDs },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:8, boxHeight:8, font:{size:10} } } },
+      scales: baseScales
+    }
+  });
+
+  const canP = DATA.canada_death_rate.provinces;
+  const canV = DATA.canada_death_rate.values;
+  new Chart(document.getElementById('chartCanadaDR'), {
+    type:'bar',
+    data:{ labels: canP, datasets:[{
+      data: canV, backgroundColor: canP.map((p,i)=> i===canV.indexOf(Math.max(...canV)) ? COLORS.red : COLORS.amber),
+      borderRadius: 2, maxBarThickness: 26
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label: ctx=>ctx.parsed.x+'%'}} },
+      scales:{ x:{ grid:gridOpt, ticks:{callback:v=>v+'%'} }, y:{ grid:{display:false} } }
+    }
+  });
+
+  const euColors = { Germany:PALETTE[0], France:PALETTE[1], Italy:PALETTE[2] };
+  const euLabels = DATA.eu_daily_new.Germany.dates.map(fmtDate);
+  const euDs = Object.keys(DATA.eu_daily_new).map(country=>({
+    label: country, data: DATA.eu_daily_new[country].values,
+    borderColor: euColors[country], backgroundColor: euColors[country],
+    borderWidth: 2, pointRadius:0, tension:0.2
+  }));
+  new Chart(document.getElementById('chartEU'), {
+    type:'line',
+    data:{ labels: euLabels, datasets: euDs },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales: baseScales
+    }
+  });
+  const euLegend = document.getElementById('euLegend');
+  Object.keys(euColors).forEach(c=>{
+    euLegend.innerHTML += `<div class="legend-item"><span class="legend-dot" style="background:${euColors[c]}"></span>${c}</div>`;
+  });
+
+  const peakList = document.getElementById('peakList');
+  Object.keys(DATA.eu_peaks).forEach(country=>{
+    const p = DATA.eu_peaks[country];
+    peakList.innerHTML += `
+      <div class="peak-card">
+        <div class="peak-country">${country}</div>
+        <div class="peak-figs">
+          <div class="peak-val">${fmtFull(p.value)} new cases</div>
+          <div class="peak-date">${fmtDate(p.date)}</div>
+        </div>
+      </div>`;
+  });
+}
+
+/* ================= PAGE 3 ================= */
+function initPage3(){
+  new Chart(document.getElementById('chartTop3DR'), {
+    type:'bar',
+    data:{ labels: DATA.top3_death_rate_2020.countries, datasets:[{
+      data: DATA.top3_death_rate_2020.values,
+      backgroundColor: [COLORS.red, COLORS.amber, COLORS.cyan],
+      borderRadius: 3, maxBarThickness: 60
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+'%'}} },
+      scales:{ x:{ grid:{display:false} }, y:{ grid:gridOpt, ticks:{callback:v=>v+'%'} } }
+    }
+  });
+
+  new Chart(document.getElementById('chartUSDeaths'), {
+    type:'line',
+    data:{ labels: DATA.us_deaths_series.dates.map(fmtDate), datasets:[{
+      data: DATA.us_deaths_series.values, borderColor: COLORS.red,
+      backgroundColor: 'rgba(193,88,79,0.12)', fill:true, borderWidth:2, pointRadius:0, tension:0.15
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales: baseScales
+    }
+  });
+
+  new Chart(document.getElementById('chartAvgDeaths'), {
+    type:'bar',
+    data:{ labels: DATA.avg_daily_deaths_top5.countries, datasets:[{
+      data: DATA.avg_daily_deaths_top5.values, backgroundColor: COLORS.amber, borderRadius:3, maxBarThickness:36
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{ legend:{display:false} },
+      scales:{ x:{ grid:gridOpt, ticks:{callback:v=>fmtNum(v)} }, y:{ grid:{display:false} } }
+    }
+  });
+
+  new Chart(document.getElementById('chartCanAusRec'), {
+    type:'bar',
+    data:{ labels: DATA.canada_australia_recovery.countries, datasets:[{
+      data: DATA.canada_australia_recovery.values, backgroundColor: [COLORS.green, COLORS.cyan], borderRadius:3, maxBarThickness:60
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+'%'}} },
+      scales:{ x:{ grid:{display:false} }, y:{ grid:gridOpt, min:0, max:100, ticks:{callback:v=>v+'%'} } }
+    }
+  });
+}
+
+/* ================= PAGE 4 ================= */
+function initPage4(){
+  const sa = DATA.south_africa;
+  new Chart(document.getElementById('chartSouthAfrica'), {
+    type:'bar',
+    data:{ labels:['Total Recoveries','Total Deaths'], datasets:[{
+      data:[sa.recovered, sa.deaths], backgroundColor:[COLORS.green, COLORS.red], borderRadius:3, maxBarThickness:70
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ x:{ grid:{display:false} }, y:{ grid:gridOpt, ticks:{callback:v=>fmtNum(v)} } }
+    }
+  });
+  const rate = (sa.recovered/(sa.recovered+sa.deaths)*100).toFixed(1);
+  document.getElementById('saCallout').innerHTML =
+    `<b>${rate}% recovery rate</b> — ${fmtFull(sa.recovered)} recoveries recorded against ${fmtFull(sa.deaths)} deaths, among the strongest recovery outcomes in the dataset.`;
+
+  const usR = DATA.recovery_ratio_us, inR = DATA.recovery_ratio_india;
+  new Chart(document.getElementById('chartRecRatio'), {
+    type:'line',
+    data:{
+      labels: usR.months.map(fmtMonth),
+      datasets:[
+        { label:'US', data: usR.values, borderColor: PALETTE[0], backgroundColor:PALETTE[0], borderWidth:2, pointRadius:2, tension:0.2 },
+        { label:'India', data: inR.values, borderColor: PALETTE[1], backgroundColor:PALETTE[1], borderWidth:2, pointRadius:2, tension:0.2 }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{ x:{ grid:gridOpt }, y:{ grid:gridOpt, ticks:{callback:v=>v+'%'} } }
+    }
+  });
+  const rrLegend = document.getElementById('recRatioLegend');
+  [['US',PALETTE[0]],['India',PALETTE[1]]].forEach(([c,col])=>{
+    rrLegend.innerHTML += `<div class="legend-item"><span class="legend-dot" style="background:${col}"></span>${c}</div>`;
+  });
+
+  // monthly table + filter
+  const countries = [...new Set(DATA.monthly_table.map(r=>r['Country/Region']))].sort();
+  const sel = document.getElementById('monthlyCountryFilter');
+  countries.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+  sel.value = countries.includes('US') ? 'US' : countries[0];
+
+  function renderTable(country){
+    const rows = DATA.monthly_table.filter(r=>r['Country/Region']===country)
+      .sort((a,b)=> a.YearMonth.localeCompare(b.YearMonth));
+    const tbody = document.getElementById('monthlyTableBody');
+    tbody.innerHTML = rows.map(r=>`
+      <tr>
+        <td>${fmtMonth(r.YearMonth)}</td>
+        <td>${fmtFull(r.Confirmed)}</td>
+        <td>${fmtFull(r.Deaths)}</td>
+        <td>${fmtFull(r.Recovered)}</td>
+      </tr>`).join('');
+  }
+  renderTable(sel.value);
+  sel.addEventListener('change', ()=> renderTable(sel.value));
+}
+
+initPage1();
+initPage2();
+initPage3();
+initPage4();
+
+</script>
+</body>
+</html>
