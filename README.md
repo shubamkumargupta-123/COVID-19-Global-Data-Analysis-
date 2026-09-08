@@ -39,7 +39,6 @@ Understanding how COVID-19 spread and impacted different countries required cons
 
 ![Chart Preview](images/charts/confirmed-cases-top5-countries.png)
 
-*Add your top-5-countries line chart or the US daily-deaths plot here — these are the most visually compelling outputs from the notebook.*
 
 ## 📁 Repository Structure
 
